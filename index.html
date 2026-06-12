@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工业互联网设备运维管理系统 v2.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: #0a0e17;
+            --secondary-bg: #111827;
+            --card-bg: #1a2332;
+            --border-color: #2d3748;
+            --text-primary: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --text-muted: #718096;
+            --accent-blue: #3182ce;
+            --accent-cyan: #38b2ac;
+            --accent-green: #48bb78;
+            --accent-yellow: #ecc94b;
+            --accent-red: #fc8181;
+            --accent-gray: #4a5568;
+            --nav-active: #2b6cb0;
+            --status-normal: #48bb78;
+            --status-standby: #ecc94b;
+            --status-warning: #ed8936;
+            --status-error: #fc8181;
+            --status-maintenance: #805ad5;
+            --status-offline: #4a5568;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container { display: flex; min-height: 100vh; }
+
+        .sidebar {
+            width: 220px;
+            background: linear-gradient(180deg, var(--secondary-bg) 0%, var(--primary-bg) 100%);
+            border-right: 1px solid var(--border-color);
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .sidebar-header h1 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+
+        .nav-menu { flex: 1; padding: 16px 0; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
+
+        .nav-item:hover { background-color: rgba(49, 130, 206, 0.1); color: var(--text-primary); }
+
+        .nav-item.active {
+            background-color: rgba(49, 130, 206, 0.15);
+            color: var(--accent-cyan);
+            border-left-color: var(--accent-cyan);
+        }
+
+        .nav-item .icon { font-size: 18px; }
+
+        .main-content { flex: 1; margin-left: 220px; min-height: 100vh; }
+
+        .content-header {
+            padding: 20px 24px;
+            background-color: var(--secondary-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .content-header h2 { font-size: 20px; font-weight: 600; color: var(--text-primary); }
+
+        .role-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .role-switch span { font-size: 13px; color: var(--text-secondary); }
+
+        .role-switch select {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            padding: 4px 8px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .content-body { padding: 24px; }
+
+        .page-content { display: none; }
+
+        .page-content.active { display: block; }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            outline: none;
+        }
+
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
+        }
+
+        .btn-success { background-color: var(--accent-green); color: #fff; }
+        .btn-success:hover { background-color: #38a169; }
+        .btn-warning { background-color: var(--accent-yellow); color: #1a202c; }
+        .btn-warning:hover { background-color: #d69e2e; }
+        .btn-danger { background-color: var(--accent-red); color: #fff; }
+        .btn-danger:hover { background-color: #e53e3e; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        .btn-export { background-color: var(--accent-gray); color: #fff; }
+        .btn-export:hover { background-color: #2d3748; }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-box input {
+            width: 100%;
+            max-width: 300px;
+            padding: 10px 36px 10px 14px;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .table-wrapper { overflow-x: auto; }
+
+        .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+
+        .table th, .table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .table th {
+            background-color: var(--secondary-bg);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .table tbody tr { transition: background-color 0.3s ease; }
+
+        .table tbody tr:hover { background-color: rgba(49, 130, 206, 0.05); }
+
+        .table tbody tr:last-child td { border-bottom: none; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-normal { background-color: rgba(72, 187, 120, 0.15); color: var(--status-normal); }
+        .status-standby { background-color: rgba(236, 201, 75, 0.15); color: var(--status-standby); }
+        .status-warning { background-color: rgba(237, 137, 54, 0.15); color: var(--status-warning); }
+        .status-error { background-color: rgba(252, 129, 129, 0.15); color: var(--status-error); }
+        .status-maintenance { background-color: rgba(128, 90, 213, 0.15); color: var(--status-maintenance); }
+        .status-offline { background-color: rgba(74, 85, 104, 0.15); color: var(--status-offline); }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-normal .status-dot { background-color: var(--status-normal); }
+        .status-standby .status-dot { background-color: var(--status-standby); }
+        .status-warning .status-dot { background-color: var(--status-warning); }
+        .status-error .status-dot { background-color: var(--status-error); }
+        .status-maintenance .status-dot { background-color: var(--status-maintenance); }
+        .status-offline .status-dot { background-color: var(--status-offline); animation: none; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+
+        .modal {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 500px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active .modal { transform: scale(1); }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background-color: var(--card-bg);
+        }
+
+        .modal-header h3 { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .modal-close:hover { color: var(--text-primary); }
+
+        .modal-body { padding: 20px; }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            position: sticky;
+            bottom: 0;
+            background-color: var(--card-bg);
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
+        }
+
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        .form-group select option {
+            background-color: var(--secondary-bg);
+            color: var(--text-primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .grid { display: grid; gap: 20px; }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--secondary-bg) 100%);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-icon.blue { background-color: rgba(49, 130, 206, 0.2); color: var(--accent-blue); }
+        .stat-icon.green { background-color: rgba(72, 187, 120, 0.2); color: var(--accent-green); }
+        .stat-icon.yellow { background-color: rgba(236, 201, 75, 0.2); color: var(--accent-yellow); }
+        .stat-icon.red { background-color: rgba(252, 129, 129, 0.2); color: var(--accent-red); }
+        .stat-icon.purple { background-color: rgba(128, 90, 213, 0.2); color: var(--status-maintenance); }
+
+        .stat-info .stat-value { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+        .stat-info .stat-label { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+
+        .monitor-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .monitor-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .monitor-card .status-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-bottom: 12px;
+            box-shadow: 0 0 15px currentColor;
+            animation: glow 2s infinite;
+        }
+
+        .monitor-card.normal .status-indicator { background-color: var(--status-normal); color: var(--status-normal); }
+        .monitor-card.standby .status-indicator { background-color: var(--status-standby); color: var(--status-standby); }
+        .monitor-card.warning .status-indicator { background-color: var(--status-warning); color: var(--status-warning); }
+        .monitor-card.error .status-indicator { background-color: var(--status-error); color: var(--status-error); }
+        .monitor-card.maintenance .status-indicator { background-color: var(--status-maintenance); color: var(--status-maintenance); }
+        .monitor-card.offline .status-indicator { background-color: var(--status-offline); color: var(--status-offline); animation: none; }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 15px currentColor; }
+            50% { box-shadow: 0 0 25px currentColor; }
+        }
+
+        .monitor-card .device-name { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .monitor-card .device-type { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+        .monitor-card .device-status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        .monitor-card .status-online {
+            background-color: rgba(99, 199, 132, 0.2);
+            color: var(--status-normal);
+        }
+        .monitor-card .status-offline {
+            background-color: rgba(176, 184, 194, 0.2);
+            color: var(--status-offline);
+        }
+
+        .monitor-card .device-metrics {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            font-size: 12px;
+            width: 100%;
+        }
+
+        .monitor-card .metric {
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            border-radius: 6px;
+            background-color: var(--secondary-bg);
+        }
+
+        .monitor-card .metric.warning {
+            background-color: rgba(252, 129, 129, 0.25);
+            border: 2px solid #fc8181;
+            box-shadow: 0 0 12px rgba(252, 129, 129, 0.5);
+            animation: warning-pulse 1.5s ease-in-out infinite;
+        }
+
+        .monitor-card .metric.warning .metric-value {
+            color: #fc8181;
+            font-weight: 700;
+        }
+
+        .monitor-card .metric.warning .metric-label {
+            color: #fc8181;
+        }
+
+        @keyframes warning-pulse {
+            0%, 100% {
+                box-shadow: 0 0 12px rgba(252, 129, 129, 0.5);
+                border-color: #fc8181;
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(252, 129, 129, 0.8);
+                border-color: #ff4d4d;
+            }
+        }
+
+        .monitor-card .metric-value { color: var(--text-primary); font-weight: 500; font-size: 13px; }
+        .monitor-card .metric-label { color: var(--text-muted); margin-top: 2px; font-size: 11px; }
+
+        .chart-container { height: 300px; width: 100%; }
+
+        .export-btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toast-overlay {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            max-width: 350px;
+        }
+
+        .toast-success { background-color: rgba(72, 187, 120, 0.95); color: #fff; }
+        .toast-error { background-color: rgba(252, 129, 129, 0.95); color: #fff; }
+        .toast-warning { background-color: rgba(236, 201, 75, 0.95); color: #1a202c; }
+        .toast-info { background-color: rgba(49, 130, 206, 0.95); color: #fff; }
+
+        .toast .toast-icon { font-size: 18px; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; transform: translateX(20px); }
+        }
+
+        .btn[disabled].permission-disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            position: relative;
+        }
+
+        .btn[disabled].permission-disabled:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 100;
+            margin-bottom: 8px;
+        }
+
+        .btn[disabled].permission-disabled:hover::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% - 4px);
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid rgba(0, 0, 0, 0.9);
+            z-index: 101;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 180px; }
+            .main-content { margin-left: 180px; }
+            .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+            .monitor-card .device-metrics { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">⚙️</div>
+                <h1>设备运维系统</h1>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-item active" onclick="switchTab('equipment')">
+                    <span class="icon">📋</span>
+                    <span>设备管理</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('monitor')">
+                    <span class="icon">📡</span>
+                    <span>状态监控</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('fault')">
+                    <span class="icon">🔧</span>
+                    <span>故障工单</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('dashboard')">
+                    <span class="icon">📊</span>
+                    <span>数据看板</span>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="content-header">
+                <h2 id="pageTitle">设备信息管理</h2>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div id="pageActions"></div>
+                    <div class="role-switch">
+                        <span>角色:</span>
+                        <select id="roleSelect" onchange="handleRoleChange()">
+                            <option value="admin">管理员</option>
+                            <option value="operator">普通运维员</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <div id="equipment-page" class="page-content active">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">设备列表</span>
+                            <div class="export-btn-group">
+                                <button class="btn btn-primary" onclick="openEquipmentModal()">
+                                    <span>+</span>
+                                    <span>新增设备</span>
+                                </button>
+                                <button class="btn btn-export" onclick="exportEquipmentData()">
+                                    <span>📥</span>
+                                    <span>导出Excel</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="search-box">
+                            <input type="text" id="equipmentSearch" placeholder="搜索设备名称、类型、位置..." onkeyup="handleEquipmentSearch()">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="table" id="equipmentTable">
+                                <thead>
+                                    <tr>
+                                        <th>设备编号</th>
+                                        <th>设备名称</th>
+                                        <th>设备类型</th>
+                                        <th>型号</th>
+                                        <th>安装位置</th>
+                                        <th>投产时间</th>
+                                        <th>运维责任人</th>
+                                        <th>设备状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="equipmentTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="equipmentEmptyState" style="display: none;">
+                            <div class="icon">📭</div>
+                            <p>暂无设备数据</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="monitor-page" class="page-content">
+                    <div class="grid grid-4">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">🔌</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="monitorTotal">0</div>
+                                <div class="stat-label">总设备数</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">✅</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="monitorNormal">0</div>
+                                <div class="stat-label">正常运行</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon yellow">⚠️</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="monitorWarning">0</div>
+                                <div class="stat-label">预警/待机</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">❌</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="monitorError">0</div>
+                                <div class="stat-label">故障/检修</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">设备状态实时监控</span>
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="status-badge status-normal"><span class="status-dot"></span>正常</span>
+                                    <span class="status-badge status-standby"><span class="status-dot"></span>待机</span>
+                                    <span class="status-badge status-warning"><span class="status-dot"></span>预警</span>
+                                    <span class="status-badge status-error"><span class="status-dot"></span>故障</span>
+                                    <span class="status-badge status-maintenance"><span class="status-dot"></span>检修</span>
+                                    <span class="status-badge status-offline"><span class="status-dot"></span>离线</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 14px;">
+                                    <span>自动刷新:</span>
+                                    <button class="btn btn-sm" id="monitorRefreshBtn" onclick="toggleMonitorRefresh()">开启</button>
+                                    <span id="monitorLastUpdate">上次更新: --</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-3" id="monitorGrid"></div>
+                    </div>
+                </div>
+
+                <div id="fault-page" class="page-content">
+                    <div class="grid grid-4">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">📝</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="faultTotal">0</div>
+                                <div class="stat-label">总工单数</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">⏳</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="faultPending">0</div>
+                                <div class="stat-label">待处理</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon yellow">🔄</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="faultProcessing">0</div>
+                                <div class="stat-label">处理中</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">✅</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="faultCompleted">0</div>
+                                <div class="stat-label">已完成</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">工单列表</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-primary" onclick="openFaultModal()">
+                                    <span>+</span>
+                                    <span>创建工单</span>
+                                </button>
+                                <button class="btn btn-export" onclick="exportFaultData()">
+                                    <span>📥</span>
+                                    <span>导出Excel</span>
+                                </button>
+                                <div style="display: flex; gap: 8px; margin-left: 16px;">
+                                    <button class="btn btn-sm" onclick="filterTickets('all')" id="faultFilter-all">全部</button>
+                                    <button class="btn btn-sm" onclick="filterTickets('pending')" id="faultFilter-pending">待处理</button>
+                                    <button class="btn btn-sm" onclick="filterTickets('processing')" id="faultFilter-processing">处理中</button>
+                                    <button class="btn btn-sm" onclick="filterTickets('completed')" id="faultFilter-completed">已完成</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="table" id="faultTable">
+                                <thead>
+                                    <tr>
+                                        <th>工单编号</th>
+                                        <th>工单标题</th>
+                                        <th>关联设备</th>
+                                        <th>故障类型</th>
+                                        <th>优先级</th>
+                                        <th>状态</th>
+                                        <th>上报人</th>
+                                        <th>创建时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="faultTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="faultEmptyState" style="display: none;">
+                            <div class="icon">📭</div>
+                            <p>暂无工单数据</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="dashboard-page" class="page-content">
+                    <div class="grid grid-4">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">🔌</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="dashTotalEquipment">0</div>
+                                <div class="stat-label">设备总数</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">✅</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="dashNormalEquipment">0</div>
+                                <div class="stat-label">正常运行</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon red">📝</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="dashTotalTickets">0</div>
+                                <div class="stat-label">总工单</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon yellow">⏳</div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="dashPendingTickets">0</div>
+                                <div class="stat-label">待处理</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">设备类型分布</span>
+                            </div>
+                            <div class="chart-container" id="typePieChart"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">设备状态统计</span>
+                            </div>
+                            <div class="chart-container" id="statusBarChart"></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">月度运维工单统计</span>
+                            </div>
+                            <div class="chart-container" id="monthlyTicketChart"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">故障类型分布</span>
+                            </div>
+                            <div class="chart-container" id="faultTypeChart"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">近7天工单趋势</span>
+                        </div>
+                        <div class="chart-container" id="ticketTrendChart"></div>
+                    </div>
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">设备运行时长排行</span>
+                            </div>
+                            <div class="chart-container" id="runningHoursChart"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">工单优先级分布</span>
+                            </div>
+                            <div class="chart-container" id="priorityPieChart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="equipmentModalOverlay" onclick="closeEquipmentModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="equipmentModalTitle">新增设备</h3>
+                <button class="modal-close" onclick="closeEquipmentModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="equipmentForm">
+                    <input type="hidden" id="equipmentFormId">
+                    <div class="form-group">
+                        <label for="equipmentFormName">设备名称 *</label>
+                        <input type="text" id="equipmentFormName" required placeholder="请输入设备名称">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormType">设备类型 *</label>
+                        <select id="equipmentFormType" required>
+                            <option value="">请选择设备类型</option>
+                            <option value="传感器">传感器</option>
+                            <option value="PLC">PLC</option>
+                            <option value="机床">机床</option>
+                            <option value="风机">风机</option>
+                            <option value="数控机床">数控机床</option>
+                            <option value="工业机器人">工业机器人</option>
+                            <option value="注塑设备">注塑设备</option>
+                            <option value="切割设备">切割设备</option>
+                            <option value="物流设备">物流设备</option>
+                            <option value="增材制造">增材制造</option>
+                            <option value="动力设备">动力设备</option>
+                            <option value="检测设备">检测设备</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormModel">设备型号 *</label>
+                        <input type="text" id="equipmentFormModel" required placeholder="请输入设备型号">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormLocation">安装位置 *</label>
+                        <input type="text" id="equipmentFormLocation" required placeholder="请输入安装位置">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormCommissionDate">投产时间 *</label>
+                        <input type="date" id="equipmentFormCommissionDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormResponsible">运维责任人 *</label>
+                        <input type="text" id="equipmentFormResponsible" required placeholder="请输入运维责任人">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormStatus">设备状态 *</label>
+                        <select id="equipmentFormStatus" required>
+                            <option value="normal">正常</option>
+                            <option value="standby">待机</option>
+                            <option value="warning">预警</option>
+                            <option value="error">故障</option>
+                            <option value="maintenance">检修</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormIp">IP地址</label>
+                        <input type="text" id="equipmentFormIp" placeholder="请输入设备IP地址">
+                    </div>
+                    <div class="form-group">
+                        <label for="equipmentFormDescription">设备描述</label>
+                        <textarea id="equipmentFormDescription" placeholder="请输入设备描述信息"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-warning" onclick="closeEquipmentModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveEquipment()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="deleteModalOverlay" onclick="closeDeleteModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>确认删除</h3>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除该设备吗？此操作不可撤销。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-warning" onclick="closeDeleteModal()">取消</button>
+                <button class="btn btn-danger" onclick="confirmEquipmentDelete()">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="faultModalOverlay" onclick="closeFaultModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="faultModalTitle">创建工单</h3>
+                <button class="modal-close" onclick="closeFaultModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="faultForm">
+                    <div class="form-group">
+                        <label for="faultFormTitle">工单标题 *</label>
+                        <input type="text" id="faultFormTitle" required placeholder="请输入工单标题">
+                    </div>
+                    <div class="form-group">
+                        <label for="faultFormEquipment">关联设备 *</label>
+                        <select id="faultFormEquipment" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="faultFormType">故障类型 *</label>
+                        <select id="faultFormType" required>
+                            <option value="">请选择故障类型</option>
+                            <option value="hardware">硬件故障</option>
+                            <option value="software">软件故障</option>
+                            <option value="network">线路故障</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="faultFormPriority">优先级 *</label>
+                        <select id="faultFormPriority" required>
+                            <option value="high">高</option>
+                            <option value="medium">中</option>
+                            <option value="low">低</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="faultFormReporter">上报人 *</label>
+                        <input type="text" id="faultFormReporter" required placeholder="请输入上报人姓名">
+                    </div>
+                    <div class="form-group">
+                        <label for="faultFormDescription">故障描述 *</label>
+                        <textarea id="faultFormDescription" required placeholder="请详细描述故障情况"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-warning" onclick="closeFaultModal()">取消</button>
+                <button class="btn btn-primary" onclick="createFaultTicket()">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="faultDetailModalOverlay" onclick="closeFaultDetailModal(event)">
+        <div class="modal" onclick="event.stopPropagation()" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>工单详情</h3>
+                <button class="modal-close" onclick="closeFaultDetailModal()">×</button>
+            </div>
+            <div class="modal-body" id="faultDetailContent"></div>
+            <div class="modal-footer">
+                <button class="btn btn-warning" onclick="closeFaultDetailModal()">关闭</button>
+                <button class="btn btn-primary" id="faultHandleBtn" onclick="handleFaultTicket()">处理工单</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-overlay" id="toastOverlay"></div>
+
+    <script>
+        const STORAGE_KEYS = { EQUIPMENT: 'equipment_list', TICKETS: 'fault_tickets', ROLE: 'current_role' };
+
+        const THRESHOLDS = {
+            temperature: { max: 60, unit: '°C' },
+            humidity: { max: 80, unit: '%' },
+            power: { max: 45, unit: 'kW' },
+            rpm: { max: 3000, unit: 'rpm' },
+            voltage: { max: 240, unit: 'V' }
+        };
+
+        const DEFAULT_EQUIPMENT = [
+            { id: 'EQ001', name: '温度传感器-A1', type: '传感器', model: 'PT100-200', location: 'A车间-1号工位', commissionDate: '2024-01-15', responsible: '张工', status: 'normal', runningHours: 12580, ipAddress: '192.168.1.101', description: '高精度温度传感器' },
+            { id: 'EQ002', name: 'PLC控制器-B1', type: 'PLC', model: 'Siemens S7-1200', location: 'B车间-中控室', commissionDate: '2023-06-20', responsible: '李工', status: 'normal', runningHours: 18200, ipAddress: '192.168.1.102', description: '西门子PLC控制器' },
+            { id: 'EQ003', name: 'CNC加工中心-C1', type: '机床', model: 'FANUC M-20iA', location: 'C车间-3号工位', commissionDate: '2022-11-10', responsible: '王工', status: 'warning', runningHours: 25600, ipAddress: '192.168.1.103', description: 'CNC加工中心，主轴温度偏高' },
+            { id: 'EQ004', name: '冷却风机-D1', type: '风机', model: 'ABB ACQ580', location: 'D车间-冷却区', commissionDate: '2023-03-25', responsible: '赵工', status: 'error', runningHours: 8900, ipAddress: '192.168.1.104', description: '冷却风机故障，轴承损坏' },
+            { id: 'EQ005', name: '工业机器人-E1', type: '工业机器人', model: 'ABB IRB 1410', location: 'E车间-焊接区', commissionDate: '2024-05-08', responsible: '孙工', status: 'standby', runningHours: 3200, ipAddress: '192.168.1.105', description: '六轴焊接机器人，待机中' },
+            { id: 'EQ006', name: '注塑机-F1', type: '注塑设备', model: '海天 MA3200', location: 'F车间-成型区', commissionDate: '2022-08-15', responsible: '周工', status: 'maintenance', runningHours: 32000, ipAddress: '192.168.1.106', description: '注塑机，定期检修中' },
+            { id: 'EQ007', name: '激光切割机-G1', type: '切割设备', model: '大族激光 G3015', location: 'G车间-切割区', commissionDate: '2023-12-01', responsible: '吴工', status: 'normal', runningHours: 6750, ipAddress: '192.168.1.107', description: '光纤激光切割机' },
+            { id: 'EQ008', name: 'AGV搬运车-H1', type: '物流设备', model: '极智嘉 P800', location: '仓库-A区', commissionDate: '2024-02-20', responsible: '郑工', status: 'normal', runningHours: 4500, ipAddress: '192.168.1.108', description: '自动导引运输车' }
+        ];
+
+        const DEFAULT_TICKETS = [
+            { id: 'TK001', title: '冷却风机轴承损坏', description: '冷却风机D1运行时噪音异常，经检查轴承磨损严重', equipmentId: 'EQ004', equipmentName: '冷却风机-D1', faultType: 'hardware', faultTypeName: '硬件故障', priority: 'high', status: 'pending', reporter: '赵工', createdAt: '2026-06-08 14:30', updatedAt: '2026-06-08 14:30', handler: '', maintenanceLogs: [] },
+            { id: 'TK002', title: 'CNC主轴温度偏高', description: 'CNC加工中心C1工作时主轴温度达到65度，超过阈值60度', equipmentId: 'EQ003', equipmentName: 'CNC加工中心-C1', faultType: 'hardware', faultTypeName: '硬件故障', priority: 'medium', status: 'processing', reporter: '王工', createdAt: '2026-06-09 09:15', updatedAt: '2026-06-09 10:00', handler: '王工', maintenanceLogs: [{ time: '2026-06-09 10:00', action: '开始检查主轴冷却系统', operator: '王工' }] },
+            { id: 'TK003', title: 'PLC通讯中断', description: 'PLC控制器B1与上位机通讯时断时续，检查网络连接正常', equipmentId: 'EQ002', equipmentName: 'PLC控制器-B1', faultType: 'software', faultTypeName: '软件故障', priority: 'medium', status: 'pending', reporter: '李工', createdAt: '2026-06-10 08:00', updatedAt: '2026-06-10 08:00', handler: '', maintenanceLogs: [] },
+            { id: 'TK004', title: '温度传感器数据异常', description: '温度传感器A1测量数据波动较大，可能线路接触不良', equipmentId: 'EQ001', equipmentName: '温度传感器-A1', faultType: 'network', faultTypeName: '线路故障', priority: 'low', status: 'completed', reporter: '张工', createdAt: '2026-06-05 16:20', updatedAt: '2026-06-07 11:30', handler: '张工', maintenanceLogs: [{ time: '2026-06-06 09:00', action: '检查传感器接线端子', operator: '张工' }, { time: '2026-06-07 11:30', action: '重新紧固接线，数据恢复正常', operator: '张工' }] },
+            { id: 'TK005', title: 'AGV定位偏差', description: 'AGV搬运车H1在仓库A区定位精度下降', equipmentId: 'EQ008', equipmentName: 'AGV搬运车-H1', faultType: 'software', faultTypeName: '软件故障', priority: 'low', status: 'completed', reporter: '郑工', createdAt: '2026-06-01 10:00', updatedAt: '2026-06-03 15:00', handler: '郑工', maintenanceLogs: [{ time: '2026-06-02 14:00', action: '更新AGV导航地图', operator: '郑工' }, { time: '2026-06-03 15:00', action: '定位精度恢复正常', operator: '郑工' }] }
+        ];
+
+        function generateId(prefix) {
+            const count = getEquipmentList().length + getTicketList().length + 1;
+            return `${prefix}${String(count).padStart(3, '0')}`;
+        }
+
+        function getEquipmentList() {
+            const data = localStorage.getItem(STORAGE_KEYS.EQUIPMENT);
+            if (!data) { localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(DEFAULT_EQUIPMENT)); return DEFAULT_EQUIPMENT; }
+            return JSON.parse(data);
+        }
+
+        function saveEquipmentList(list) { localStorage.setItem(STORAGE_KEYS.EQUIPMENT, JSON.stringify(list)); }
+
+        function addEquipment(equipment) {
+            const list = getEquipmentList();
+            const newEquipment = { ...equipment, id: generateId('EQ'), runningHours: 0 };
+            list.push(newEquipment);
+            saveEquipmentList(list);
+            return newEquipment;
+        }
+
+        function updateEquipment(id, updatedEquipment) {
+            const list = getEquipmentList();
+            const index = list.findIndex(item => item.id === id);
+            if (index !== -1) { list[index] = { ...list[index], ...updatedEquipment }; saveEquipmentList(list); return list[index]; }
+            return null;
+        }
+
+        function deleteEquipment(id) {
+            const list = getEquipmentList();
+            const filtered = list.filter(item => item.id !== id);
+            saveEquipmentList(filtered);
+            return filtered;
+        }
+
+        function searchEquipment(keyword) {
+            const list = getEquipmentList();
+            if (!keyword) return list;
+            const lowerKeyword = keyword.toLowerCase();
+            return list.filter(item => item.name.toLowerCase().includes(lowerKeyword) || item.type.toLowerCase().includes(lowerKeyword) || item.location.toLowerCase().includes(lowerKeyword) || item.id.toLowerCase().includes(lowerKeyword));
+        }
+
+        function getTicketList() {
+            const data = localStorage.getItem(STORAGE_KEYS.TICKETS);
+            if (!data) { localStorage.setItem(STORAGE_KEYS.TICKETS, JSON.stringify(DEFAULT_TICKETS)); return DEFAULT_TICKETS; }
+            return JSON.parse(data);
+        }
+
+        function saveTicketList(list) { localStorage.setItem(STORAGE_KEYS.TICKETS, JSON.stringify(list)); }
+
+        function addTicket(ticket) {
+            const list = getTicketList();
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const newTicket = { ...ticket, id: generateId('TK'), status: 'pending', createdAt: timeStr, updatedAt: timeStr, handler: '', maintenanceLogs: [] };
+            list.push(newTicket);
+            saveTicketList(list);
+            return newTicket;
+        }
+
+        function updateTicket(id, updatedTicket) {
+            const list = getTicketList();
+            const index = list.findIndex(item => item.id === id);
+            if (index !== -1) {
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                list[index] = { ...list[index], ...updatedTicket, updatedAt: timeStr };
+                saveTicketList(list);
+                return list[index];
+            }
+            return null;
+        }
+
+        function getTicketByStatus(status) {
+            const list = getTicketList();
+            if (!status || status === 'all') return list;
+            return list.filter(item => item.status === status);
+        }
+
+        function getStatistics() {
+            const equipment = getEquipmentList();
+            const tickets = getTicketList();
+            
+            const totalEquipment = equipment.length;
+            const normalCount = equipment.filter(e => e.status === 'normal').length;
+            const standbyCount = equipment.filter(e => e.status === 'standby').length;
+            const warningCount = equipment.filter(e => e.status === 'warning').length;
+            const errorCount = equipment.filter(e => e.status === 'error').length;
+            const maintenanceCount = equipment.filter(e => e.status === 'maintenance').length;
+            
+            const totalTickets = tickets.length;
+            const pendingCount = tickets.filter(t => t.status === 'pending').length;
+            const processingCount = tickets.filter(t => t.status === 'processing').length;
+            const completedCount = tickets.filter(t => t.status === 'completed').length;
+            const closedCount = tickets.filter(t => t.status === 'closed').length;
+            
+            const typeDistribution = {};
+            equipment.forEach(e => { typeDistribution[e.type] = (typeDistribution[e.type] || 0) + 1; });
+            
+            const faultTypeDistribution = { hardware: 0, software: 0, network: 0 };
+            tickets.forEach(t => { if (faultTypeDistribution[t.faultType] !== undefined) faultTypeDistribution[t.faultType]++; });
+            
+            const priorityDistribution = { high: 0, medium: 0, low: 0 };
+            tickets.forEach(t => { if (priorityDistribution[t.priority] !== undefined) priorityDistribution[t.priority]++; });
+            
+            const last7Days = [];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                last7Days.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
+            }
+            const ticketTrend = last7Days.map(date => tickets.filter(t => t.createdAt.startsWith(date)).length);
+            
+            const last12Months = [];
+            for (let i = 11; i >= 0; i--) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                last12Months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+            }
+            const monthlyTicketTrend = last12Months.map(month => tickets.filter(t => t.createdAt.startsWith(month)).length);
+            
+            const sortedEquipment = [...equipment].sort((a, b) => b.runningHours - a.runningHours);
+            
+            return { 
+                totalEquipment, 
+                normalCount, 
+                standbyCount, 
+                warningCount, 
+                errorCount, 
+                maintenanceCount, 
+                totalTickets, 
+                pendingCount, 
+                processingCount, 
+                completedCount, 
+                closedCount,
+                typeDistribution, 
+                faultTypeDistribution,
+                priorityDistribution,
+                last7Days, 
+                ticketTrend, 
+                last12Months, 
+                monthlyTicketTrend,
+                sortedEquipment
+            };
+        }
+
+        function simulateStatusChange() {
+            const list = getEquipmentList();
+            let changed = false;
+            list.forEach(equipment => {
+                const rand = Math.random();
+                if (equipment.status === 'normal' && rand < 0.03) { equipment.status = 'warning'; changed = true; }
+                else if (equipment.status === 'warning') {
+                    if (rand < 0.15) { equipment.status = 'error'; changed = true; }
+                    else if (rand < 0.4) { equipment.status = 'normal'; changed = true; }
+                }
+                else if (equipment.status === 'error' && rand < 0.08) { equipment.status = 'maintenance'; changed = true; }
+                else if (equipment.status === 'maintenance' && rand < 0.2) { equipment.status = 'normal'; changed = true; }
+                else if (equipment.status === 'standby' && rand < 0.3) { equipment.status = 'normal'; changed = true; }
+                else if (equipment.status === 'normal' && rand < 0.02) { equipment.status = 'standby'; changed = true; }
+                equipment.runningHours += Math.floor(Math.random() * 5);
+            });
+            if (changed) saveEquipmentList(list);
+            return list;
+        }
+
+        let currentEquipmentEditId = null;
+        let currentEquipmentDeleteId = null;
+        let currentFaultFilter = 'all';
+        let currentFaultTicketId = null;
+        let monitorRefreshInterval = null;
+        let charts = {};
+        let currentRole = localStorage.getItem(STORAGE_KEYS.ROLE) || 'admin';
+
+        document.getElementById('roleSelect').value = currentRole;
+
+        const PAGE_CONFIG = {
+            equipment: { title: '设备信息管理', actions: '<button class="btn btn-primary" onclick="openEquipmentModal()"><span>+</span><span>新增设备</span></button><button class="btn btn-export" onclick="exportEquipmentData()" style="margin-left: 8px;"><span>📥</span><span>导出Excel</span></button>' },
+            monitor: { title: '设备状态监控', actions: '' },
+            fault: { title: '故障工单管理', actions: '<button class="btn btn-primary" onclick="openFaultModal()"><span>+</span><span>创建工单</span></button><button class="btn btn-export" onclick="exportFaultData()" style="margin-left: 8px;"><span>📥</span><span>导出Excel</span></button>' },
+            dashboard: { title: '数据统计看板', actions: '' }
+        };
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+            document.getElementById(`${tabName}-page`).classList.add('active');
+            const config = PAGE_CONFIG[tabName];
+            document.getElementById('pageTitle').textContent = config.title;
+            document.getElementById('pageActions').innerHTML = config.actions;
+            if (tabName === 'equipment') loadEquipmentTable();
+            else if (tabName === 'monitor') { loadMonitorData(); startMonitorRefresh(); }
+            else if (tabName === 'fault') loadFaultData();
+            else if (tabName === 'dashboard') { initDashboardCharts(); loadDashboardData(); }
+            updatePageActionPermissions();
+        }
+
+        function handleRoleChange() {
+            currentRole = document.getElementById('roleSelect').value;
+            localStorage.setItem(STORAGE_KEYS.ROLE, currentRole);
+            loadEquipmentTable();
+            loadFaultData();
+            updatePageActionPermissions();
+            const roleName = currentRole === 'admin' ? '管理员' : '普通运维员';
+            showToast(`角色已切换为：${roleName}`, 'success');
+        }
+
+        function updatePageActionPermissions() {
+            const pageActions = document.getElementById('pageActions');
+            const actionButtons = pageActions.querySelectorAll('button');
+            actionButtons.forEach(btn => {
+                if (btn.textContent.includes('新增设备') || btn.textContent.includes('创建工单')) {
+                    if (btn.textContent.includes('新增设备')) {
+                        if (!isAdmin()) {
+                            btn.disabled = true;
+                            btn.classList.add('permission-disabled');
+                            btn.dataset.tip = '普通运维员无新增设备权限';
+                        } else {
+                            btn.disabled = false;
+                            btn.classList.remove('permission-disabled');
+                            delete btn.dataset.tip;
+                        }
+                    }
+                }
+            });
+            const equipmentPageBtn = document.querySelector('#equipment-page .card-header .btn-primary');
+            if (equipmentPageBtn && equipmentPageBtn.textContent.includes('新增设备')) {
+                if (!isAdmin()) {
+                    equipmentPageBtn.disabled = true;
+                    equipmentPageBtn.classList.add('permission-disabled');
+                    equipmentPageBtn.dataset.tip = '普通运维员无新增设备权限';
+                } else {
+                    equipmentPageBtn.disabled = false;
+                    equipmentPageBtn.classList.remove('permission-disabled');
+                    delete equipmentPageBtn.dataset.tip;
+                }
+            }
+        }
+
+        function isAdmin() { return currentRole === 'admin'; }
+
+        function showToast(message, type = 'info') {
+            const icons = { success: '✓', error: '✕', warning: '⚠️', info: 'ℹ️' };
+            const overlay = document.getElementById('toastOverlay');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            overlay.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 3000);
+        }
+
+        function showPermissionDenied() {
+            showToast('权限不足：此操作需要管理员权限', 'error');
+        }
+
+        function getStatusBadge(status) {
+            const map = {
+                normal: { text: '正常', class: 'status-normal' },
+                standby: { text: '待机', class: 'status-standby' },
+                warning: { text: '预警', class: 'status-warning' },
+                error: { text: '故障', class: 'status-error' },
+                maintenance: { text: '检修', class: 'status-maintenance' }
+            };
+            const info = map[status] || map.normal;
+            return `<span class="status-badge ${info.class}"><span class="status-dot"></span>${info.text}</span>`;
+        }
+
+        function getPriorityBadge(priority) {
+            const map = { high: { text: '高', class: 'status-error' }, medium: { text: '中', class: 'status-warning' }, low: { text: '低', class: 'status-normal' } };
+            const info = map[priority] || map.medium;
+            return `<span class="status-badge ${info.class}">${info.text}</span>`;
+        }
+
+        function getFaultStatusBadge(status) {
+            const map = { pending: { text: '待处理', class: 'status-error' }, processing: { text: '处理中', class: 'status-warning' }, completed: { text: '已完成', class: 'status-normal' } };
+            const info = map[status] || map.pending;
+            return `<span class="status-badge ${info.class}">${info.text}</span>`;
+        }
+
+        function getFaultTypeName(type) {
+            const map = { hardware: '硬件故障', software: '软件故障', network: '线路故障' };
+            return map[type] || type;
+        }
+
+        function loadEquipmentTable(data) {
+            const list = data || getEquipmentList();
+            const tbody = document.getElementById('equipmentTableBody');
+            const emptyState = document.getElementById('equipmentEmptyState');
+            if (!list || list.length === 0) { tbody.innerHTML = ''; emptyState.style.display = 'block'; return; }
+            emptyState.style.display = 'none';
+            tbody.innerHTML = list.map(item => `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.name}</td>
+                    <td>${item.type}</td>
+                    <td>${item.model}</td>
+                    <td>${item.location}</td>
+                    <td>${item.commissionDate}</td>
+                    <td>${item.responsible}</td>
+                    <td>${getStatusBadge(item.status)}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="editEquipment('${item.id}')">编辑</button>
+                        <button class="btn btn-danger btn-sm ${!isAdmin() ? 'permission-disabled' : ''}" onclick="openEquipmentDeleteModal('${item.id}')" ${!isAdmin() ? 'disabled data-tip="普通运维员无删除权限"' : ''}>删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function handleEquipmentSearch() {
+            const keyword = document.getElementById('equipmentSearch').value.trim();
+            const data = searchEquipment(keyword);
+            loadEquipmentTable(data);
+        }
+
+        function openEquipmentModal(id) {
+            currentEquipmentEditId = id || null;
+            const form = document.getElementById('equipmentForm');
+            if (id) {
+                const equipment = getEquipmentList().find(e => e.id === id);
+                document.getElementById('equipmentModalTitle').textContent = '编辑设备';
+                document.getElementById('equipmentFormId').value = equipment.id;
+                document.getElementById('equipmentFormName').value = equipment.name;
+                document.getElementById('equipmentFormType').value = equipment.type;
+                document.getElementById('equipmentFormModel').value = equipment.model;
+                document.getElementById('equipmentFormLocation').value = equipment.location;
+                document.getElementById('equipmentFormCommissionDate').value = equipment.commissionDate;
+                document.getElementById('equipmentFormResponsible').value = equipment.responsible;
+                document.getElementById('equipmentFormStatus').value = equipment.status;
+                document.getElementById('equipmentFormIp').value = equipment.ipAddress;
+                document.getElementById('equipmentFormDescription').value = equipment.description;
+            } else {
+                document.getElementById('equipmentModalTitle').textContent = '新增设备';
+                form.reset();
+                document.getElementById('equipmentFormId').value = '';
+                document.getElementById('equipmentFormCommissionDate').value = new Date().toISOString().split('T')[0];
+            }
+            document.getElementById('equipmentModalOverlay').classList.add('active');
+        }
+
+        function closeEquipmentModal(event) {
+            if (!event || event.target === document.getElementById('equipmentModalOverlay')) {
+                document.getElementById('equipmentModalOverlay').classList.remove('active');
+            }
+        }
+
+        function saveEquipment() {
+            const form = document.getElementById('equipmentForm');
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+            const data = {
+                name: document.getElementById('equipmentFormName').value,
+                type: document.getElementById('equipmentFormType').value,
+                model: document.getElementById('equipmentFormModel').value,
+                location: document.getElementById('equipmentFormLocation').value,
+                commissionDate: document.getElementById('equipmentFormCommissionDate').value,
+                responsible: document.getElementById('equipmentFormResponsible').value,
+                status: document.getElementById('equipmentFormStatus').value,
+                ipAddress: document.getElementById('equipmentFormIp').value,
+                description: document.getElementById('equipmentFormDescription').value
+            };
+            if (currentEquipmentEditId) updateEquipment(currentEquipmentEditId, data);
+            else addEquipment(data);
+            closeEquipmentModal();
+            loadEquipmentTable();
+        }
+
+        function editEquipment(id) { openEquipmentModal(id); }
+
+        function openEquipmentDeleteModal(id) {
+            if (!isAdmin()) {
+                showPermissionDenied();
+                return;
+            }
+            currentEquipmentDeleteId = id;
+            document.getElementById('deleteModalOverlay').classList.add('active');
+        }
+
+        function closeDeleteModal(event) {
+            if (!event || event.target === document.getElementById('deleteModalOverlay')) {
+                document.getElementById('deleteModalOverlay').classList.remove('active');
+                currentEquipmentDeleteId = null;
+            }
+        }
+
+        function confirmEquipmentDelete() {
+            if (currentEquipmentDeleteId) {
+                deleteEquipment(currentEquipmentDeleteId);
+                closeDeleteModal();
+                loadEquipmentTable();
+            }
+        }
+
+        function exportEquipmentData() {
+            const equipment = getEquipmentList();
+            const headers = ['设备编号', '设备名称', '设备类型', '型号', '安装位置', '投产时间', '上次维护时间', '下次维护时间', '运维责任人', '设备状态', '运行时长(小时)', 'IP地址', '设备描述'];
+            const rows = equipment.map(e => [
+                e.id, e.name, e.type, e.model, e.location, e.commissionDate || '', e.lastMaintenance || '', e.nextMaintenance || '',
+                e.responsible, getStatusBadge(e.status).replace(/<[^>]*>/g, ''), e.runningHours, e.ipAddress || '', e.description || ''
+            ]);
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '设备信息');
+            const now = new Date();
+            const fileName = `设备信息_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+
+        function loadMonitorData() {
+            const data = simulateStatusChange();
+            const total = data.length;
+            const normal = data.filter(e => e.status === 'normal').length;
+            const warning = data.filter(e => e.status === 'warning' || e.status === 'standby').length;
+            const error = data.filter(e => e.status === 'error' || e.status === 'maintenance').length;
+
+            document.getElementById('monitorTotal').textContent = total;
+            document.getElementById('monitorNormal').textContent = normal;
+            document.getElementById('monitorWarning').textContent = warning;
+            document.getElementById('monitorError').textContent = error;
+
+            const now = new Date();
+            document.getElementById('monitorLastUpdate').textContent = `上次更新: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+            const grid = document.getElementById('monitorGrid');
+            grid.innerHTML = data.map(item => {
+                const isOffline = Math.random() < 0.05;
+                const metrics = {
+                    temperature: Math.floor(30 + Math.random() * 45),
+                    humidity: Math.floor(30 + Math.random() * 60),
+                    power: (10 + Math.random() * 45).toFixed(1),
+                    rpm: Math.floor(1000 + Math.random() * 2800),
+                    voltage: Math.floor(200 + Math.random() * 60),
+                    runningHours: item.runningHours
+                };
+
+                const tempClass = metrics.temperature > THRESHOLDS.temperature.max ? 'warning' : '';
+                const humidityClass = metrics.humidity > THRESHOLDS.humidity.max ? 'warning' : '';
+                const powerClass = parseFloat(metrics.power) > THRESHOLDS.power.max ? 'warning' : '';
+                const rpmClass = metrics.rpm > THRESHOLDS.rpm.max ? 'warning' : '';
+                const voltageClass = metrics.voltage > THRESHOLDS.voltage.max ? 'warning' : '';
+
+                return `
+                    <div class="monitor-card ${isOffline ? 'offline' : item.status}">
+                        <div class="status-indicator"></div>
+                        <div class="device-name">${item.name}</div>
+                        <div class="device-type">${item.type} · ${item.id}</div>
+                        <div class="device-status-badge ${isOffline ? 'status-offline' : 'status-online'}">
+                            ${isOffline ? '离线' : '在线'}
+                        </div>
+                        <div class="device-metrics">
+                            <div class="metric ${tempClass}">
+                                <div class="metric-value">${metrics.temperature}°C</div>
+                                <div class="metric-label">温度</div>
+                            </div>
+                            <div class="metric ${humidityClass}">
+                                <div class="metric-value">${metrics.humidity}%</div>
+                                <div class="metric-label">湿度</div>
+                            </div>
+                            <div class="metric ${powerClass}">
+                                <div class="metric-value">${metrics.power}kW</div>
+                                <div class="metric-label">功率</div>
+                            </div>
+                            <div class="metric ${rpmClass}">
+                                <div class="metric-value">${metrics.rpm}RPM</div>
+                                <div class="metric-label">转速</div>
+                            </div>
+                            <div class="metric ${voltageClass}">
+                                <div class="metric-value">${metrics.voltage}V</div>
+                                <div class="metric-label">电压</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">${metrics.runningHours}h</div>
+                                <div class="metric-label">运行时长</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">${item.location}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function startMonitorRefresh() {
+            if (monitorRefreshInterval) clearInterval(monitorRefreshInterval);
+            monitorRefreshInterval = setInterval(loadMonitorData, 5000);
+        }
+
+        function toggleMonitorRefresh() {
+            const btn = document.getElementById('monitorRefreshBtn');
+            if (monitorRefreshInterval) {
+                clearInterval(monitorRefreshInterval);
+                monitorRefreshInterval = null;
+                btn.textContent = '关闭';
+                btn.style.backgroundColor = 'var(--accent-red)';
+            } else {
+                startMonitorRefresh();
+                btn.textContent = '开启';
+                btn.style.backgroundColor = 'var(--accent-green)';
+            }
+        }
+
+        function loadFaultData() {
+            const data = getTicketByStatus(currentFaultFilter);
+            const allTickets = getTicketList();
+
+            document.getElementById('faultTotal').textContent = allTickets.length;
+            document.getElementById('faultPending').textContent = allTickets.filter(t => t.status === 'pending').length;
+            document.getElementById('faultProcessing').textContent = allTickets.filter(t => t.status === 'processing').length;
+            document.getElementById('faultCompleted').textContent = allTickets.filter(t => t.status === 'completed').length;
+
+            const tbody = document.getElementById('faultTableBody');
+            const emptyState = document.getElementById('faultEmptyState');
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.title}</td>
+                    <td>${item.equipmentName}</td>
+                    <td>${getFaultTypeName(item.faultType)}</td>
+                    <td>${getPriorityBadge(item.priority)}</td>
+                    <td>${getFaultStatusBadge(item.status)}</td>
+                    <td>${item.reporter}</td>
+                    <td>${item.createdAt}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="viewFaultTicket('${item.id}')">查看</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterTickets(status) {
+            currentFaultFilter = status;
+            document.querySelectorAll('[id^="faultFilter-"]').forEach(btn => { btn.style.backgroundColor = ''; btn.style.color = ''; });
+            document.getElementById(`faultFilter-${status}`).style.backgroundColor = 'var(--accent-blue)';
+            document.getElementById(`faultFilter-${status}`).style.color = '#fff';
+            loadFaultData();
+        }
+
+        function openFaultModal() {
+            document.getElementById('faultForm').reset();
+            const equipmentList = getEquipmentList();
+            const select = document.getElementById('faultFormEquipment');
+            select.innerHTML = '<option value="">请选择设备</option>' + equipmentList.map(e => `<option value="${e.id}" data-name="${e.name}">${e.name} (${e.id})</option>`).join('');
+            document.getElementById('faultModalOverlay').classList.add('active');
+        }
+
+        function closeFaultModal(event) {
+            if (!event || event.target === document.getElementById('faultModalOverlay')) {
+                document.getElementById('faultModalOverlay').classList.remove('active');
+            }
+        }
+
+        function createFaultTicket() {
+            const form = document.getElementById('faultForm');
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+
+            const select = document.getElementById('faultFormEquipment');
+            const option = select.options[select.selectedIndex];
+            const faultTypeValue = document.getElementById('faultFormType').value;
+
+            addTicket({
+                title: document.getElementById('faultFormTitle').value,
+                equipmentId: select.value,
+                equipmentName: option.dataset.name,
+                faultType: faultTypeValue,
+                faultTypeName: getFaultTypeName(faultTypeValue),
+                priority: document.getElementById('faultFormPriority').value,
+                reporter: document.getElementById('faultFormReporter').value,
+                description: document.getElementById('faultFormDescription').value
+            });
+
+            closeFaultModal();
+            loadFaultData();
+        }
+
+        function viewFaultTicket(id) {
+            const ticket = getTicketList().find(t => t.id === id);
+            if (!ticket) return;
+
+            currentFaultTicketId = id;
+            const faultTypeNameDisplay = ticket.faultTypeName || getFaultTypeName(ticket.faultType);
+            
+            const logsHtml = ticket.maintenanceLogs && ticket.maintenanceLogs.length > 0 ? `
+                <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <label style="color: var(--text-secondary); margin-bottom: 8px; display: block;">运维记录</label>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${ticket.maintenanceLogs.map(log => `
+                            <div style="padding: 8px; background-color: var(--secondary-bg); border-radius: 4px; margin-bottom: 8px;">
+                                <div style="font-size: 12px; color: var(--text-muted);">${log.time}</div>
+                                <div style="font-size: 13px; color: var(--text-primary);">${log.action}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">操作人: ${log.operator}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '<div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;"><p style="color: var(--text-muted); font-size: 13px;">暂无运维记录</p></div>';
+
+            document.getElementById('faultDetailContent').innerHTML = `
+                <div style="display: grid; gap: 12px;">
+                    <div><span style="color: var(--text-muted);">工单编号:</span><span style="margin-left: 8px;">${ticket.id}</span></div>
+                    <div><span style="color: var(--text-muted);">工单标题:</span><span style="margin-left: 8px;">${ticket.title}</span></div>
+                    <div><span style="color: var(--text-muted);">关联设备:</span><span style="margin-left: 8px;">${ticket.equipmentName}</span></div>
+                    <div><span style="color: var(--text-muted);">故障类型:</span><span style="margin-left: 8px;">${faultTypeNameDisplay}</span></div>
+                    <div><span style="color: var(--text-muted);">优先级:</span><span style="margin-left: 8px;">${getPriorityBadge(ticket.priority).innerHTML}</span></div>
+                    <div><span style="color: var(--text-muted);">当前状态:</span><span style="margin-left: 8px;">${getFaultStatusBadge(ticket.status).innerHTML}</span></div>
+                    <div><span style="color: var(--text-muted);">上报人:</span><span style="margin-left: 8px;">${ticket.reporter}</span></div>
+                    <div><span style="color: var(--text-muted);">处理人:</span><span style="margin-left: 8px;">${ticket.handler || '未分配'}</span></div>
+                    <div><span style="color: var(--text-muted);">创建时间:</span><span style="margin-left: 8px;">${ticket.createdAt}</span></div>
+                    <div><span style="color: var(--text-muted);">更新时间:</span><span style="margin-left: 8px;">${ticket.updatedAt}</span></div>
+                    <div><span style="color: var(--text-muted);">故障描述:</span></div>
+                    <div style="padding: 12px; background-color: var(--secondary-bg); border-radius: 8px;">${ticket.description}</div>
+                    ${logsHtml}
+                    <div id="faultStatusChangeSection" style="margin-top: 16px;">
+                        <label style="color: var(--text-secondary); margin-bottom: 8px; display: block;">状态变更</label>
+                        <select id="faultNewStatus">
+                            ${ticket.status === 'pending' ? '<option value="processing">处理中</option>' : ''}
+                            ${ticket.status === 'processing' ? '<option value="completed">已完成</option>' : ''}
+                        </select>
+                    </div>
+                    <div id="faultLogSection" style="margin-top: 16px; ${ticket.status === 'completed' ? 'display: none;' : ''}">
+                        <label style="color: var(--text-secondary); margin-bottom: 8px; display: block;">运维操作记录</label>
+                        <textarea id="faultMaintenanceLog" rows="3" placeholder="请输入运维操作内容"></textarea>
+                    </div>
+                </div>
+            `;
+
+            const handleBtn = document.getElementById('faultHandleBtn');
+            if (ticket.status === 'completed') {
+                handleBtn.style.display = 'none';
+            } else {
+                handleBtn.style.display = 'inline-flex';
+                handleBtn.textContent = ticket.status === 'pending' ? '开始处理' : '完成处理';
+            }
+
+            document.getElementById('faultDetailModalOverlay').classList.add('active');
+        }
+
+        function closeFaultDetailModal(event) {
+            if (!event || event.target === document.getElementById('faultDetailModalOverlay')) {
+                document.getElementById('faultDetailModalOverlay').classList.remove('active');
+                currentFaultTicketId = null;
+            }
+        }
+
+        function handleFaultTicket() {
+            if (!currentFaultTicketId) return;
+            const newStatus = document.getElementById('faultNewStatus').value;
+            const logContent = document.getElementById('faultMaintenanceLog').value;
+
+            if (!newStatus) {
+                alert('请选择要变更的状态');
+                return;
+            }
+
+            const ticket = getTicketList().find(t => t.id === currentFaultTicketId);
+            let handler = ticket.handler;
+            
+            if (!handler) {
+                handler = prompt('请输入处理人姓名:', '');
+                if (!handler) return;
+            }
+
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            
+            const defaultAction = newStatus === 'processing' ? '开始处理工单' : '工单处理完成';
+            const newLogs = [...(ticket.maintenanceLogs || []), {
+                time: timeStr,
+                action: logContent || defaultAction,
+                operator: handler
+            }];
+
+            updateTicket(currentFaultTicketId, { 
+                status: newStatus, 
+                handler: handler, 
+                maintenanceLogs: newLogs 
+            });
+            
+            closeFaultDetailModal();
+            loadFaultData();
+        }
+
+        function exportFaultData() {
+            const tickets = getTicketList();
+            const headers = ['工单编号', '工单标题', '关联设备', '故障类型', '优先级', '状态', '上报人', '处理人', '创建时间', '更新时间', '故障描述', '运维记录'];
+            const rows = tickets.map(t => {
+                const logs = t.maintenanceLogs || [];
+                const logsText = logs.length > 0 ? logs.map(log => `【${log.time}】${log.action} - ${log.operator}`).join('\n') : '无';
+                return [
+                    t.id, t.title, t.equipmentName, getFaultTypeName(t.faultType),
+                    t.priority === 'high' ? '高' : t.priority === 'medium' ? '中' : '低',
+                    t.status === 'pending' ? '待处理' : t.status === 'processing' ? '处理中' : t.status === 'closed' ? '已关闭' : '已完成',
+                    t.reporter, t.handler || '未分配', t.createdAt, t.updatedAt, t.description, logsText
+                ];
+            });
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '运维工单');
+            const now = new Date();
+            const fileName = `运维工单_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+        }
+
+        function initDashboardCharts() {
+            Object.keys(charts).forEach(key => {
+                if (charts[key]) {
+                    charts[key].dispose();
+                    charts[key] = null;
+                }
+            });
+            charts.typePieChart = echarts.init(document.getElementById('typePieChart'), 'dark');
+            charts.statusBarChart = echarts.init(document.getElementById('statusBarChart'), 'dark');
+            charts.monthlyTicketChart = echarts.init(document.getElementById('monthlyTicketChart'), 'dark');
+            charts.faultTypeChart = echarts.init(document.getElementById('faultTypeChart'), 'dark');
+            charts.ticketTrendChart = echarts.init(document.getElementById('ticketTrendChart'), 'dark');
+            charts.runningHoursChart = echarts.init(document.getElementById('runningHoursChart'), 'dark');
+            charts.priorityPieChart = echarts.init(document.getElementById('priorityPieChart'), 'dark');
+        }
+
+        function loadDashboardData() {
+            const data = getStatistics();
+
+            document.getElementById('dashTotalEquipment').textContent = data.totalEquipment;
+            document.getElementById('dashNormalEquipment').textContent = data.normalCount;
+            document.getElementById('dashTotalTickets').textContent = data.totalTickets;
+            document.getElementById('dashPendingTickets').textContent = data.pendingCount;
+
+            const typeKeys = Object.keys(data.typeDistribution);
+            const typeValues = Object.values(data.typeDistribution);
+            const chartColors = ['#3182ce', '#38b2ac', '#48bb78', '#ecc94b', '#fc8181', '#805ad5', '#d69e2e', '#ed8936'];
+
+            charts.typePieChart.setOption({
+                title: { text: '设备类型分布', left: 'center', top: 10, textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 'bold' } },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} 台 ({d}%)', backgroundColor: 'rgba(26, 35, 50, 0.95)', borderColor: '#2d3748', textStyle: { color: '#e2e8f0' } },
+                legend: { orient: 'horizontal', bottom: 10, textStyle: { color: '#a0aec0' }, itemGap: 15 },
+                series: [{
+                    name: '设备类型', type: 'pie', radius: ['40%', '70%'],
+                    itemStyle: { borderRadius: 8, borderColor: '#1a2332', borderWidth: 2 },
+                    label: { show: true, formatter: '{b}\n{d}%', color: '#a0aec0', fontSize: 12 },
+                    labelLine: { lineStyle: { color: '#4a5568' } },
+                    data: typeKeys.map((key, i) => ({
+                        name: key, value: typeValues[i],
+                        itemStyle: { color: chartColors[i % chartColors.length] }
+                    }))
+                }]
+            });
+
+            charts.statusBarChart.setOption({
+                title: { text: '设备状态统计', left: 'center', top: 10, textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 'bold' } },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(26, 35, 50, 0.95)', borderColor: '#2d3748', textStyle: { color: '#e2e8f0' } },
+                grid: { left: '3%', right: '4%', bottom: '15%', top: '15%', containLabel: true },
+                xAxis: { type: 'category', data: ['正常', '待机', '预警', '故障', '检修'], axisLabel: { color: '#a0aec0', fontSize: 12 }, axisLine: { lineStyle: { color: '#2d3748' } }, axisTick: { lineStyle: { color: '#2d3748' } } },
+                yAxis: { type: 'value', axisLabel: { color: '#a0aec0', fontSize: 12 }, axisLine: { lineStyle: { color: '#2d3748' } }, splitLine: { lineStyle: { color: '#2d3748', type: 'dashed' } } },
+                series: [{
+                    name: '设备数', type: 'bar', barWidth: '50%',
+                    data: [
+                        { value: data.normalCount, itemStyle: { color: '#48bb78', borderRadius: [4, 4, 0, 0] } },
+                        { value: data.standbyCount, itemStyle: { color: '#ecc94b', borderRadius: [4, 4, 0, 0] } },
+                        { value: data.warningCount, itemStyle: { color: '#ed8936', borderRadius: [4, 4, 0, 0] } },
+                        { value: data.errorCount, itemStyle: { color: '#fc8181', borderRadius: [4, 4, 0, 0] } },
+                        { value: data.maintenanceCount, itemStyle: { color: '#805ad5', borderRadius: [4, 4, 0, 0] } }
+                    ]
+                }]
+            });
+
+            charts.monthlyTicketChart.setOption({
+                title: { text: '月度运维工单统计', left: 'center', top: 10, textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 'bold' } },
+                tooltip: { trigger: 'axis', formatter: '{b}<br/>工单数: {c}', backgroundColor: 'rgba(26, 35, 50, 0.95)', borderColor: '#2d3748', textStyle: { color: '#e2e8f0' } },
+                grid: { left: '3%', right: '4%', bottom: '20%', top: '15%', containLabel: true },
+                xAxis: { type: 'category', data: data.last12Months, axisLabel: { color: '#a0aec0', fontSize: 11, rotate: 45 }, axisLine: { lineStyle: { color: '#2d3748' } }, axisTick: { lineStyle: { color: '#2d3748' } } },
+                yAxis: { type: 'value', axisLabel: { color: '#a0aec0', fontSize: 12 }, axisLine: { lineStyle: { color: '#2d3748' } }, splitLine: { lineStyle: { color: '#2d3748', type: 'dashed' } } },
+                series: [{
+                    name: '月度工单', type: 'bar', barWidth: '60%',
+                    data: data.monthlyTicketTrend,
+                    itemStyle: { 
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#3182ce' }, { offset: 1, color: '#38b2ac' }]),
+                        borderRadius: [4, 4, 0, 0]
+                    }
+                }]
+            });
+
+            charts.faultTypeChart.setOption({
+                title: { text: '故障类型分布', left: 'center', top: 10, textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 'bold' } },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} 单 ({d}%)', backgroundColor: 'rgba(26, 35, 50, 0.95)', borderColor: '#2d3748', textStyle: { color: '#e2e8f0' } },
+                legend: { orient: 'horizontal', bottom: 10, textStyle: { color: '#a0aec0' }, itemGap: 15 },
+                series: [{
+                    name: '故障类型', type: 'pie', radius: ['40%', '70%'],
+                    itemStyle: { borderRadius: 8, borderColor: '#1a2332', borderWidth: 2 },
+                    label: { show: true, formatter: '{b}\n{d}%', color: '#a0aec0', fontSize: 12 },
+                    labelLine: { lineStyle: { color: '#4a5568' } },
+                    data: [
+                        { name: '硬件故障', value: data.faultTypeDistribution.hardware, itemStyle: { color: '#fc8181' } },
+                        { name: '软件故障', value: data.faultTypeDistribution.software, itemStyle: { color: '#ecc94b' } },
+                        { name: '线路故障', value: data.faultTypeDistribution.network, itemStyle: { color: '#38b2ac' } }
+                    ]
+                }]
+            });
+
+            charts.ticketTrendChart.setOption({
+                title: { text: '近7天工单趋势', left: 'center', top: 10, textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 'bold' } },
+                tooltip: { trigger: 'axis', formatter: '{b}<br/>工单数: {c}', backgroundColor: 'rgba(26, 35, 50, 0.95)', borderColor: '#2d3748', textStyle: { color: '#e2e8f0' } },
+                grid: { left: '3%', right: '4%', bottom: '15%', top: '15%', containLabel: true },
+                xAxis: { type: 'category', boundaryGap: false, data: data.last7Days, axisLabel: { color: '#a0aec0', fontSize: 11, rotate: 30 }, axisLine: { lineStyle: { color: '#2d3748' } }, axisTick: { lineStyle: { color: '#2d3748' } } },
+                yAxis: { type: 'value', axisLabel: { color: '#a0aec0', fontSize: 12 }, axisLine: { lineStyle: { color: '#2d3748' } }, splitLine: { lineStyle: { color: '#2d3748', type: 'dashed' } } },
+                series: [{
+                    name: '工单数量', type: 'line', smooth: true,
+                    data: data.ticketTrend,
+                    lineStyle: { color: '#38b2ac', width: 3 },
+                    itemStyle: { color: '#38b2ac', borderWidth: 2, borderColor: '#1a2332' },
+                    areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(56, 178, 172, 0.3)' }, { offset: 1, color: 'rgba(56, 178, 172, 0.05)' }]) },
+                    symbol: 'circle',
+                    symbolSize: 8
+                }]
+            });
+
+            const topEquipment = data.sortedEquipment.slice(0, 5);
+
+            charts.runningHoursChart.setOption({
+                title: { text: '设备运行时长排行', left: 'center', top: 10, textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 'bold' } },
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}<br/>运行时长: {c} 小时', backgroundColor: 'rgba(26, 35, 50, 0.95)', borderColor: '#2d3748', textStyle: { color: '#e2e8f0' } },
+                grid: { left: '15%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+                xAxis: { type: 'value', axisLabel: { color: '#a0aec0', fontSize: 12 }, axisLine: { lineStyle: { color: '#2d3748' } }, splitLine: { lineStyle: { color: '#2d3748', type: 'dashed' } } },
+                yAxis: { type: 'category', data: topEquipment.map(e => e.name), axisLabel: { color: '#a0aec0', fontSize: 11 }, axisLine: { lineStyle: { color: '#2d3748' } }, axisTick: { lineStyle: { color: '#2d3748' } } },
+                series: [{
+                    name: '运行时长', type: 'bar', barWidth: '60%',
+                    data: topEquipment.map(e => e.runningHours),
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [{ offset: 0, color: '#3182ce' }, { offset: 1, color: '#38b2ac' }]),
+                        borderRadius: [0, 6, 6, 0]
+                    }
+                }]
+            });
+
+            charts.priorityPieChart.setOption({
+                title: { text: '工单优先级分布', left: 'center', top: 10, textStyle: { color: '#e2e8f0', fontSize: 14, fontWeight: 'bold' } },
+                tooltip: { trigger: 'item', formatter: '{b}: {c} 单 ({d}%)', backgroundColor: 'rgba(26, 35, 50, 0.95)', borderColor: '#2d3748', textStyle: { color: '#e2e8f0' } },
+                legend: { orient: 'horizontal', bottom: 10, textStyle: { color: '#a0aec0' }, itemGap: 15 },
+                series: [{
+                    name: '优先级', type: 'pie', radius: ['40%', '70%'],
+                    itemStyle: { borderRadius: 8, borderColor: '#1a2332', borderWidth: 2 },
+                    label: { show: true, formatter: '{b}\n{d}%', color: '#a0aec0', fontSize: 12 },
+                    labelLine: { lineStyle: { color: '#4a5568' } },
+                    data: [
+                        { name: '高', value: data.priorityDistribution.high, itemStyle: { color: '#fc8181' } },
+                        { name: '中', value: data.priorityDistribution.medium, itemStyle: { color: '#ecc94b' } },
+                        { name: '低', value: data.priorityDistribution.low, itemStyle: { color: '#48bb78' } }
+                    ]
+                }]
+            });
+
+            Object.values(charts).forEach(chart => { if (chart) chart.resize(); });
+        }
+
+        let resizeTimeout = null;
+        function handleChartResize() {
+            Object.values(charts).forEach(chart => { if (chart) chart.resize(); });
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            loadEquipmentTable();
+            updatePageActionPermissions();
+            window.addEventListener('resize', () => {
+                if (resizeTimeout) clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(handleChartResize, 200);
+            });
+        });
+    </script>
+</body>
+</html>
